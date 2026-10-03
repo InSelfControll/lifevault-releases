@@ -29,12 +29,13 @@ private.
 - [Install](#install)
 - [Quick start](#quick-start)
 - [Command reference](#command-reference)
-  - [What's new in 0.4.0](#whats-new-in-040)
+  - [What's new in 0.5](#whats-new-in-05)
   - [Provider and vendor guides](#provider-and-vendor-guides)
   - [Vault and unlocking](#vault-and-unlocking)
   - [Storing and using secrets](#storing-and-using-secrets)
   - [Importing .env files by project](#importing-env-files-by-project)
   - [Pushing projects to other secret managers](#pushing-projects-to-other-secret-managers)
+  - [Loading .env files from your vault](#loading-env-files-from-your-vault)
   - [Importing from other sources](#importing-from-other-sources)
   - [SSH keys](#ssh-keys)
   - [Automatic refresh](#automatic-refresh)
@@ -106,27 +107,29 @@ lifevault lock                         # forget the unlocked session now
 ## Command reference
 
 Run `lifevault --help` for the full built-in help, or `lifevault <group> --help`
-(for `update`, `broker`, `target`, `target connect`, `import-provider` and `push`).
+(for `update`, `broker`, `target`, `target connect`, `remote`, `import-provider`
+and `push`).
 
-### What's new in 0.4.0
+### What's new in 0.5
 
-- **Nothing to install for most push targets.** Bitwarden/Vaultwarden, HashiCorp
-  Vault and Ansible Vault use built-in clients by default (`--client native`);
-  `--client cli` uses the official `bw`, `vault` or `ansible-vault` instead.
-  `import-hashicorp` and `import-ansible` take `--client` too. 1Password still
-  needs `op`.
-- **Browser-assisted setup.** `target connect bitwarden|onepassword|hashicorp`
-  opens the page where the credential is created (HashiCorp Vault: an OIDC login),
-  verifies it, saves it and pushes. Run it again to renew credentials and retry
-  pending pushes. `import-provider PROVIDER --connect` does the same for hosting
-  provider tokens.
-- **Private Bitwarden collections.** `--create-collection NAME` creates a
-  collection only you can access, and changing a target's collection moves its
-  item there instead of leaving a copy behind.
-- **Clearer feedback.** Errors explain a missing target `NAME`, an unknown option
-  or an organization name passed to `target add --organization` (which takes an
-  ID). Named projects without secrets are warned about, and the first push
-  reports `Pushed N projects (M keys) to TARGET.`
+- **Bitwarden section layout.** New Bitwarden/Vaultwarden targets in an
+  organization put each project in one secure note, named exactly like the
+  project, inside the collection named by `--parent` (for example
+  `dnsfabric/DNS_FABRIC_LICENSE`). `--layout per-key` writes one note per
+  variable instead. See [Bitwarden layouts](#bitwarden-layouts).
+- **`.env` files that only hold references.** `lifevault run --env-file .env`
+  resolves values such as `lifevault://dnsfabric/DNS_FABRIC_LICENSE/DATABASE_URL`
+  from Bitwarden/Vaultwarden at run time, so the file can be committed. Resolved
+  values are cached encrypted, with an offline fallback. See
+  [Loading .env files from your vault](#loading-env-files-from-your-vault).
+- **Read-only remotes.** `lifevault remote connect bitwarden NAME` lets a teammate
+  who only reads the collections run the project with nothing but the `.env` file.
+- **Vault format.** Vaults with per-key or section targets, remotes or cached
+  references can't be opened by older releases; update every machine that shares
+  the vault.
+- **0.5.1 fixes.** Targets and remotes that use the same server and API key count
+  as one account, so their references are no longer reported as ambiguous.
+  `lifevault list | head` and similar pipes exit quietly.
 
 ### Provider and vendor guides
 
@@ -165,6 +168,7 @@ answers the same Lifevault binary.
 | `lifevault remove NAME...` | Delete secrets. |
 | `lifevault import NAME...` | Copy current environment variables into the vault. |
 | `lifevault run [--project NAME] NAME[=ENV_NAME]... -- CMD ARGS` | Run a command with selected secrets in its environment. `NAME=ENV_NAME` renames a secret for the program. `--project` adds every `PROJECT__KEY` as `KEY`. |
+| `lifevault run --env-file PATH... [--remote NAME] [--refresh \| --offline] [--project NAME] [NAME[=ENV_NAME]...] -- CMD ARGS` | Also load a `.env` file's variables, resolving `lifevault://` references from Bitwarden/Vaultwarden. See [Loading .env files from your vault](#loading-env-files-from-your-vault). |
 
 `run` replaces itself with your command, so the command's exit code and signals pass
 straight through. If the command can't be started, `run` exits with 127 (not
@@ -217,7 +221,7 @@ automatically.
 
 | Command | What it does |
 |---|---|
-| `lifevault target connect bitwarden NAME [--server URL] [--organization NAME_OR_ID \| --folder NAME] [--collection NAME_OR_ID \| --create-collection NAME] [--client native\|cli] (--project P... \| --all-projects) [--yes] [--no-browser]` | Guided Bitwarden/Vaultwarden setup: opens the API key page, checks your login, finds the organization and collection by name (or creates a private collection), saves the credentials in your vault, creates the target and pushes. |
+| `lifevault target connect bitwarden NAME [--server URL] [--organization NAME_OR_ID [--layout section\|per-key] [--parent NAME] \| --folder NAME] [--layout per-project] [--collection NAME_OR_ID \| --create-collection NAME] [--client native\|cli] (--project P... \| --all-projects) [--yes] [--no-browser]` | Guided Bitwarden/Vaultwarden setup: opens the API key page, checks your login, finds the organization by name, creates the `--parent` collection with access only for you if it's missing (or uses or creates a single collection), saves the credentials in your vault, creates the target and pushes. Run it again with `--layout` to switch an existing target's layout. |
 | `lifevault target connect onepassword NAME [--vault NAME_OR_ID] (--project P... \| --all-projects) [--yes] [--no-browser]` | Guided 1Password setup: opens the service account page, checks the token with `op`, picks the vault, saves the token, creates the target and pushes. |
 | `lifevault target connect hashicorp NAME --address URL [--method oidc\|token] [--role ROLE] [--mount M] [--path-prefix P] [--namespace NS] [--ca-cert PATH] [--kv-version 1\|2] [--client native\|cli] (--project P... \| --all-projects) [--yes] [--no-browser]` | Guided HashiCorp Vault setup: signs in through your browser with OIDC (or takes a token), shows the token's policies and expiry, saves it, creates the target and pushes. |
 | `lifevault target add NAME --type TYPE (--project P... \| --all-projects) [OPTIONS] --auth VAR=SECRET...` | Add a target and push to it immediately (scriptable form for every type). |
@@ -227,7 +231,7 @@ automatically.
 
 | Type | Options | Required `--auth` variables | Remote layout |
 |---|---|---|---|
-| `bitwarden` (Bitwarden and Vaultwarden) | `[--server URL]` and either `--folder NAME` or `--organization ID --collection ID`; `[--client native\|cli]` | `BW_CLIENTID`, `BW_CLIENTSECRET`, `BW_PASSWORD` | A secure note `lifevault/PROJECT` with a hidden field per key |
+| `bitwarden` (Bitwarden and Vaultwarden) | `[--server URL]` and either `--organization ID [--layout section\|per-key] [--parent NAME]`, or `--folder NAME` or `--organization ID --collection ID` with `[--layout per-project]`; `[--client native\|cli]` | `BW_CLIENTID`, `BW_CLIENTSECRET`, `BW_PASSWORD` | See [Bitwarden layouts](#bitwarden-layouts) |
 | `onepassword` | `--vault NAME` | `OP_SERVICE_ACCOUNT_TOKEN` | An item `lifevault/PROJECT` with a concealed field per key |
 | `hashicorp` | `--address URL [--mount NAME] [--path-prefix P] [--namespace NS] [--ca-cert PATH] [--kv-version 1\|2] [--client native\|cli]` | `VAULT_TOKEN` | A KV secret at `MOUNT/PREFIX/project` (defaults: `secret`, `lifevault`, KV v2) |
 | `ansible` | `--dir PATH [--client native\|cli]` | `ANSIBLE_VAULT_PASSWORD` | An encrypted `DIR/project.yml` file |
@@ -242,7 +246,7 @@ pending pushes are retried.
 
 ```sh
 lifevault target connect bitwarden home --server https://vault.example.com \
-    --organization <ORG_NAME> --create-collection <COLLECTION> --all-projects
+    --organization <ORG_NAME> --parent <COLLECTION> --all-projects
 lifevault target connect onepassword work --vault <VAULT> --project my-api
 lifevault target connect hashicorp hc --address https://vault.example.com:8200 \
     --role <ROLE> --all-projects
@@ -266,7 +270,8 @@ lifevault push --dry-run
   its own isolated config folder.
 - **Who can see Bitwarden items.** An organization item is visible to everyone
   with access to its collection. Keep secrets out of collections every member
-  can open; `--create-collection NAME` creates one only you can access. See the
+  can open; a missing `--parent` collection (or `--create-collection NAME`) is
+  created with access only for you. See the
   [Bitwarden guide](docs/bitwarden.md#who-can-see-the-secrets).
 - **Only its own items.** Lifevault only changes items it created and marked. It
   won't take over an existing item that has the same name.
@@ -280,6 +285,97 @@ lifevault push --dry-run
 
 Setup guides: [Bitwarden/Vaultwarden](docs/bitwarden.md), [1Password](docs/1password.md),
 [HashiCorp Vault](docs/hashicorp-vault.md) and [Ansible Vault](docs/ansible-vault.md).
+
+#### Bitwarden layouts
+
+| Layout | Chosen by | What a project becomes |
+|---|---|---|
+| `section` | Default for new organization targets (`--organization` without `--collection`) | One secure note named exactly like the project, with a hidden field per variable, in the collection `PARENT` |
+| `per-key` | `--layout per-key` | One secure note per variable, named like the variable (hidden field `value`), in the nested collection `PARENT/PROJECT` |
+| `per-project` | `--folder NAME`, `--collection NAME_OR_ID` or `--create-collection NAME` | One secure note `lifevault/PROJECT` with a hidden field per variable (the layout of earlier releases) |
+
+`--parent NAME` names the collection for a group of projects; it defaults to the
+organization's name. A missing one is created with access only for the
+connecting account (built-in client; with `--client cli` create it in the web
+vault). For example, project `DNS_FABRIC_LICENSE` with `--parent dnsfabric`:
+
+```sh
+lifevault target connect bitwarden vw --server https://vault.example.com \
+    --organization <ORG_NAME> --parent dnsfabric --project dns-fabric-license
+#  section:   dnsfabric/                    (collection)
+#               DNS_FABRIC_LICENSE          (secure note; hidden fields DATABASE_URL, LICENSE_KEY, ...)
+#  per-key:   dnsfabric/DNS_FABRIC_LICENSE/ (collection)
+#               DATABASE_URL                (secure note; hidden field "value")
+#               LICENSE_KEY                 (secure note; hidden field "value")
+```
+
+Targets saved by earlier releases keep their layout. Switch one with
+`target connect bitwarden NAME --organization ORG --layout section --parent NAME
+--project P --yes`: after a project's new notes are written, its items of the old
+layout are moved to the trash. Collections are never deleted; delete emptied ones
+in the web vault. See the [Bitwarden guide](docs/bitwarden.md#layouts).
+
+### Loading .env files from your vault
+
+A `.env` file can hold references to Bitwarden/Vaultwarden notes instead of
+values, so it can be committed and shared. `lifevault run --env-file` resolves
+the references when the command starts.
+
+| Command | What it does |
+|---|---|
+| `lifevault run --env-file PATH [--env-file PATH]... [--remote NAME] [--refresh \| --offline] [--project P] [NAME[=ENV_NAME]...] -- CMD ARGS` | Run a command with the variables of each `.env` file, resolving `lifevault://` values. |
+| `lifevault remote connect bitwarden NAME [--server URL] [--client native] [--cache-ttl SECONDS] [--yes] [--no-browser]` | Add a read-only Bitwarden/Vaultwarden account to read references from. |
+| `lifevault remote list` | Show remotes (never values). |
+| `lifevault remote remove NAME [--yes]` | Remove a remote with its stored credentials and cached values. |
+| `lifevault remote clear-cache [NAME]` | Drop cached reference values, for all accounts or one remote or push target. |
+
+```sh
+# .env (safe to commit)
+DATABASE_URL=lifevault://dnsfabric/DNS_FABRIC_LICENSE/DATABASE_URL   # COLLECTION/NOTE/FIELD
+LICENSE_KEY=lifevault://dnsfabric/DNS_FABRIC_LICENSE/LICENSE_KEY
+LOG_LEVEL=info                                                       # plain value, used as is
+```
+
+```sh
+lifevault run --env-file .env -- ./server
+lifevault run --env-file .env --env-file .env.local --project api -- make test
+```
+
+- **References.** `lifevault://COLLECTION/NOTE/FIELD` reads the custom field
+  `FIELD` of the note `NOTE` in the collection `COLLECTION` (the section layout).
+  `lifevault://PARENT/PROJECT/KEY` reads the note `KEY` in the collection
+  `PARENT/PROJECT` (the per-key layout). Names match ignoring case, and any item
+  the account can read works, not only items Lifevault pushed. A reference that
+  fits both readings is an error, never a guess.
+- **Other values** are used literally, with no interpolation. The files are
+  parsed like `import-env`.
+- **Precedence.** Explicit `NAME[=ENV_NAME]` mappings win over `--env-file`
+  variables (later files win over earlier ones), which win over `--project`.
+- **Failures.** If a reference can't be resolved, `run` names it (never a value)
+  and doesn't start the command.
+- **Caching and offline use.** Resolved values are cached encrypted in the vault,
+  not as secrets, so `list` doesn't show them and they're never pushed. They stay
+  fresh for an hour by default (`remote connect --cache-ttl SECONDS`; `0` always
+  fetches). Fresh values need no network. If the server can't be reached, a cached
+  value is used with a warning. `--offline` uses only the cache; `--refresh`
+  always fetches.
+- **Accounts.** References are read from every Bitwarden push target and every
+  remote. Targets and remotes with the same server and API key count as one
+  account. With several accounts, the one whose organizations have the collection
+  is used; pass `--remote NAME` when more than one does.
+
+**Teammates who only read.** A teammate with read access to the collections needs
+only the `.env` file and a remote:
+
+```sh
+lifevault remote connect bitwarden team --server https://vault.example.com
+lifevault run --env-file .env -- ./server
+```
+
+`remote connect` asks for and checks the same credentials as `target connect
+bitwarden` and stores them as `REMOTE_<NAME>_BW_CLIENTID`, `..._BW_CLIENTSECRET`
+and `..._BW_PASSWORD`; they're never pushed. See `lifevault remote --help` and the
+[Bitwarden guide](docs/bitwarden.md#env-references-and-remotes).
 
 ### Importing from other sources
 

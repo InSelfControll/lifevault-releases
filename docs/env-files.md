@@ -4,6 +4,10 @@ Lifevault imports `.env` files as **projects**: each `KEY=value` line is stored 
 `PROJECT__KEY`. `lifevault run --project` then starts your app with every key of
 that project in its environment, so the plaintext file can be deleted.
 
+A `.env` file can also hold **references** to Bitwarden/Vaultwarden notes instead
+of values. `lifevault run --env-file` resolves them at run time, so the file can
+be committed (see [Committing .env files with references](#committing-env-files-with-references)).
+
 ## Prerequisites
 
 - The `lifevault` binary and a vault (`lifevault init`).
@@ -63,6 +67,54 @@ lifevault run --project my-app OTHER_TOKEN=API_TOKEN -- ./server
 `--project` adds every `MY_APP__KEY` as `KEY`. Explicit `NAME=ENV_NAME` mappings
 are added on top and win on conflict.
 
+## Committing .env files with references
+
+Push the project to a [Bitwarden/Vaultwarden](bitwarden.md) target (the section
+layout puts project `DNS_FABRIC_LICENSE` in the note
+`dnsfabric/DNS_FABRIC_LICENSE`), then replace the values with references:
+
+```sh
+# .env (safe to commit)
+DATABASE_URL=lifevault://dnsfabric/DNS_FABRIC_LICENSE/DATABASE_URL
+LICENSE_KEY=lifevault://dnsfabric/DNS_FABRIC_LICENSE/LICENSE_KEY
+LOG_LEVEL=info
+```
+
+```sh
+lifevault run --env-file .env -- ./server
+lifevault run --env-file .env --env-file .env.local -- make test
+lifevault run --env-file .env --offline -- ./server      # cached values only
+```
+
+| Option | Meaning |
+|---|---|
+| `--env-file PATH` | Load a `.env` file's variables (repeatable; later files win). |
+| `--remote NAME` | Account to read references from, when more than one has the collection. |
+| `--refresh` | Always fetch references, ignoring fresh cached values. |
+| `--offline` | Use cached values only; never contact the server. |
+
+- `lifevault://COLLECTION/NOTE/FIELD` reads a custom field of a note (section
+  layout); `lifevault://PARENT/PROJECT/KEY` reads a per-key note. Names match
+  ignoring case. A reference that fits both readings is an error.
+- Other values are used literally. The files are parsed with the rules in
+  [File syntax](#file-syntax), with no interpolation.
+- Explicit `NAME[=ENV_NAME]` mappings win over `--env-file` variables, which win
+  over `--project`.
+- Resolved values are cached encrypted in the vault (an hour by default; never
+  listed or pushed). When the server can't be reached, a cached value is used
+  with a warning. An unresolvable reference stops `run` before the command
+  starts.
+- References are read from your Bitwarden push targets. A teammate who only reads
+  the collections adds a read-only remote and needs nothing else besides the
+  `.env` file:
+
+  ```sh
+  lifevault remote connect bitwarden team --server https://<vaultwarden-host>
+  lifevault run --env-file .env -- ./server
+  ```
+
+See [`.env` references and remotes](bitwarden.md#env-references-and-remotes).
+
 ## File syntax
 
 - `KEY=value` lines, optional `export `, blank lines and `#` comments.
@@ -94,7 +146,8 @@ lifevault import-env ~/code/my-app --replace --auto-refresh 300
 Projects can be mirrored to [Bitwarden/Vaultwarden](bitwarden.md),
 [1Password](1password.md), [HashiCorp Vault](hashicorp-vault.md) or
 [Ansible Vault](ansible-vault.md). Importing or refreshing a `.env` file pushes
-the changed projects automatically.
+the changed projects automatically. Bitwarden-pushed projects can then be loaded
+back through `.env` references.
 
 ## Security notes
 

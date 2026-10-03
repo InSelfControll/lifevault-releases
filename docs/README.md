@@ -20,11 +20,11 @@ Guides use four kinds of integration:
 
 | Guide | Used for | Summary |
 |---|---|---|
-| [Bitwarden / Vaultwarden](bitwarden.md) | Push secrets | Built-in client; guided `target connect bitwarden`, private collections with `--create-collection`, or scripted `target add --type bitwarden`. |
+| [Bitwarden / Vaultwarden](bitwarden.md) | Push secrets | Built-in client; guided `target connect bitwarden` with section, per-key or per-project layouts; `.env` references and read-only remotes; or scripted `target add --type bitwarden`. |
 | [1Password](1password.md) | Push secrets | Push projects to one vault with a service account; guided `target connect onepassword`. Needs `op`. |
 | [HashiCorp Vault](hashicorp-vault.md) | Push secrets, import from | Built-in client; push projects to KV v1/v2 with `target connect hashicorp` (OIDC or token); import KV fields with `import-hashicorp`. |
 | [Ansible Vault](ansible-vault.md) | Push secrets, import from | Built-in client; write encrypted `project.yml` files; import fields with `import-ansible`. |
-| [.env files](env-files.md) | Import from | Import `.env` files as projects; run apps with `run --project`. |
+| [.env files](env-files.md) | Import from | Import `.env` files as projects; run apps with `run --project`, or commit `.env` files of `lifevault://` references and run with `run --env-file`. |
 | [SSH keys](ssh.md) | Import from | Store private keys; load them into `ssh-agent` for one hour. |
 | [Hetzner](hetzner.md) | Store credentials, broker dynamic credentials | Cloud API token (`--connect` verifies it) and Storage Box bundles; broker-managed read-only Storage Box subaccounts. |
 | [OVHcloud](ovhcloud.md) | Store credentials, broker dynamic credentials | Legacy API keys (`ovh`) and OAuth (`ovh-oauth`) bundles; broker-managed OAuth service accounts. |
@@ -43,7 +43,8 @@ Guides use four kinds of integration:
 | [Cloudflare](cloudflare.md) | Broker dynamic credentials | Expiring API tokens with explicit policies. |
 
 Run `lifevault --help`, `lifevault import-provider --list`, `lifevault target --help`,
-`lifevault target connect --help` and `lifevault broker --help` for the built-in
+`lifevault target connect --help`, `lifevault remote --help` and
+`lifevault broker --help` for the built-in
 reference. The full broker reference (`docs/broker.md` and
 `docs/provider-capabilities.md`) ships inside each release archive.
 
