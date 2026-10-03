@@ -7,9 +7,12 @@ how updates and failures behave.
 Guides use four kinds of integration:
 
 - **Store credentials**: `import-provider` saves an existing credential bundle
-  from your environment into the local vault.
-- **Push secrets**: `target add` / `target connect` mirror your projects, one way,
-  into another secret manager.
+  into the local vault. `import-provider PROVIDER --connect` opens the
+  provider's token page, asks for the values and checks the token where
+  supported.
+- **Push secrets**: `target connect` (guided) or `target add` (scripted) mirror
+  your projects, one way, into another secret manager. Bitwarden/Vaultwarden,
+  HashiCorp Vault and Ansible Vault need nothing installed; 1Password needs `op`.
 - **Import from**: copy secrets from another tool or file into the vault.
 - **Broker dynamic credentials**: the optional standalone broker issues
   short-lived credentials from a provider adapter. Start with
@@ -17,18 +20,18 @@ Guides use four kinds of integration:
 
 | Guide | Used for | Summary |
 |---|---|---|
-| [Bitwarden / Vaultwarden](bitwarden.md) | Push secrets | Guided `target connect bitwarden`, or scripted `target add --type bitwarden`. |
-| [1Password](1password.md) | Push secrets | Push projects to one vault with a service account. |
-| [HashiCorp Vault](hashicorp-vault.md) | Push secrets, import from | Push projects to KV v1/v2; import KV fields with `import-hashicorp`. |
-| [Ansible Vault](ansible-vault.md) | Push secrets, import from | Write encrypted `project.yml` files; import fields with `import-ansible`. |
+| [Bitwarden / Vaultwarden](bitwarden.md) | Push secrets | Built-in client; guided `target connect bitwarden`, private collections with `--create-collection`, or scripted `target add --type bitwarden`. |
+| [1Password](1password.md) | Push secrets | Push projects to one vault with a service account; guided `target connect onepassword`. Needs `op`. |
+| [HashiCorp Vault](hashicorp-vault.md) | Push secrets, import from | Built-in client; push projects to KV v1/v2 with `target connect hashicorp` (OIDC or token); import KV fields with `import-hashicorp`. |
+| [Ansible Vault](ansible-vault.md) | Push secrets, import from | Built-in client; write encrypted `project.yml` files; import fields with `import-ansible`. |
 | [.env files](env-files.md) | Import from | Import `.env` files as projects; run apps with `run --project`. |
 | [SSH keys](ssh.md) | Import from | Store private keys; load them into `ssh-agent` for one hour. |
-| [Hetzner](hetzner.md) | Store credentials, broker dynamic credentials | Cloud API token and Storage Box bundles; broker-managed read-only Storage Box subaccounts. |
+| [Hetzner](hetzner.md) | Store credentials, broker dynamic credentials | Cloud API token (`--connect` verifies it) and Storage Box bundles; broker-managed read-only Storage Box subaccounts. |
 | [OVHcloud](ovhcloud.md) | Store credentials, broker dynamic credentials | Legacy API keys (`ovh`) and OAuth (`ovh-oauth`) bundles; broker-managed OAuth service accounts. |
-| [DigitalOcean](digitalocean.md) | Store credentials | Store a `DIGITALOCEAN_TOKEN`. |
-| [Linode (Akamai)](linode.md) | Store credentials | Store a `LINODE_TOKEN`. |
-| [Vultr](vultr.md) | Store credentials | Store a `VULTR_API_KEY`. |
-| [Scaleway](scaleway.md) | Store credentials | Store an access/secret key pair with optional project, region and zone. |
+| [DigitalOcean](digitalocean.md) | Store credentials | Store a `DIGITALOCEAN_TOKEN`; `--connect` verifies it. |
+| [Linode (Akamai)](linode.md) | Store credentials | Store a `LINODE_TOKEN`; `--connect` verifies it. |
+| [Vultr](vultr.md) | Store credentials | Store a `VULTR_API_KEY`; `--connect` verifies it. |
+| [Scaleway](scaleway.md) | Store credentials | Store an access/secret key pair with optional project, region and zone; `--connect` verifies it. |
 | [Broker basics](broker-basics.md) | Broker dynamic credentials | Start the broker, enroll identities, fetch credentials, run the local agent. |
 | [AWS](aws.md) | Broker dynamic credentials | STS AssumeRole sessions (`aws-sts`) or temporary IAM users (`aws-iam`). |
 | [Azure](azure.md) | Broker dynamic credentials | Expiring passwords on an existing Entra application. |

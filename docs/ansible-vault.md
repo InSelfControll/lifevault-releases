@@ -1,6 +1,9 @@
 # Ansible Vault
 
-Lifevault works with Ansible Vault in both directions, through `ansible-vault`:
+Lifevault works with Ansible Vault in both directions. The built-in client
+(`--client native`, the default) encrypts and decrypts Ansible Vault files
+itself, so nothing needs to be installed. `--client cli` uses the official
+`ansible-vault` instead.
 
 - **Push**: write each project as a whole-file encrypted YAML map,
   `DIR/<project>.yml`, that playbooks load with `vars_files` or `group_vars`.
@@ -9,7 +12,8 @@ Lifevault works with Ansible Vault in both directions, through `ansible-vault`:
 
 ## Prerequisites
 
-- `ansible-vault` on `PATH`.
+- Nothing to install. Only `--client cli` needs `ansible-vault` on `PATH`; a
+  `--client cli` target is refused up front when it is missing.
 - For push: an existing directory for the encrypted files, and the vault password
   stored in Lifevault.
 - For import: an existing password file or credential helper. Interactive
@@ -33,11 +37,14 @@ lifevault target add <TARGET> --type ansible --project <PROJECT> \
 |---|---|
 | `--dir PATH` | Required. Existing directory for the encrypted files. |
 | `--project P` (repeatable) or `--all-projects` | Projects to push. |
+| `--client native\|cli` | Built-in client (default) or `ansible-vault`. |
 | `--auth ANSIBLE_VAULT_PASSWORD=<SECRET>` | Required. Stored secret holding the vault password. |
 
 Project `MY_APP` is written to `<DIR>/my_app.yml` as a whole-file encrypted YAML
-map with one key per `MY_APP__KEY` secret. Files are mode `0600` and replaced
-atomically. Use them in a playbook:
+map with one key per `MY_APP__KEY` secret. The built-in client writes the
+standard `$ANSIBLE_VAULT;1.1;AES256` format (PBKDF2-SHA256, AES-256-CTR,
+HMAC-SHA256), which every `ansible-vault` can read. Files are mode `0600` and
+replaced atomically. Use them in a playbook:
 
 ```sh
 ansible-playbook site.yml --vault-password-file <path/to/password-source>
@@ -61,8 +68,9 @@ ansible-playbook site.yml --vault-password-file <path/to/password-source>
   item until `lifevault push --prune`. `target remove` never deletes remote data.
 - **Credentials by reference.** `--auth VAR=SECRET_NAME` maps the CLI's variable
   to a stored secret. Auth secrets are never pushed.
-- **No values in argv.** Values reach the CLI on stdin; credentials go in the
-  child environment, which is cleared except for `PATH`, `HOME`, `LANG`, the auth
+- **No values in argv.** The built-in client encrypts in-process. With
+  `--client cli`, values reach `ansible-vault` on stdin and credentials go in its
+  environment, which is cleared except for `PATH`, `HOME`, `LANG`, the auth
   variables and backend settings. CLI error output is discarded.
 
 ### Day-to-day commands
@@ -93,7 +101,13 @@ lifevault import-ansible group_vars/prod/vault.yml \
   --vault-id prod@<path/to/password-source> --all
 lifevault import-ansible ./secrets.yml api_key=<APP>_API_KEY \
   --vault-password-file <path/to/password-source> --auto-refresh 300
+lifevault import-ansible ./secrets.yml --all \
+  --vault-password-file <path/to/password-source> --client cli   # use ansible-vault view
 ```
+
+The built-in client decrypts Ansible Vault 1.1/1.2 (AES256) files itself.
+`--client cli` runs `ansible-vault view` instead; tracked imports remember the
+choice.
 
 | Option | Meaning |
 |---|---|
@@ -112,6 +126,7 @@ Import options:
 | `FIELDS...` | Fields to import. `SOURCE=NAME` stores field `SOURCE` as `NAME`. |
 | `--all` | Import every field. Use either `FIELDS...` or `--all`, not both. |
 | `--replace` | Allow overwriting existing names. |
+| `--client native\|cli` | Built-in client (default) or `ansible-vault view`. |
 | `--auto-refresh SECONDS` | Track the source and re-read it before use when due (1 to 604800). |
 
 - Source values must be flat strings. Nested maps and non-string values are
@@ -146,7 +161,7 @@ lifevault refresh --disable   # stop tracking; keep current values
 
 - **"Ansible imports require --vault-password-file or --vault-id".** Add one;
   interactive prompting is not supported.
-- **Import fails with a generic error.** Check with
-  `ansible-vault view <FILE> --vault-password-file <path>`. Lifevault hides
-  source errors.
+- **Import fails with a generic error.** Check the file and password source (for
+  example with `ansible-vault view <FILE> --vault-password-file <path>`).
+  Lifevault hides source errors.
 - **Field rejected.** Values must be strings; quote numbers in YAML.

@@ -25,6 +25,21 @@ Lifevault only stores an already validated key.
 
 ### Store it
 
+Recommended: the guided form opens the OVH `createToken` page for your endpoint
+(`OVH_ENDPOINT`, default `ovh-eu`) in your browser and asks for the application
+key, application secret and consumer key at hidden prompts. OVH credentials are
+not checked.
+
+```sh
+lifevault import-provider ovh --connect
+```
+
+Fields already set in your environment are used as-is; the optional
+`OVH_ENDPOINT` may be left empty. `--no-browser` (or `LIFEVAULT_NO_BROWSER`)
+prints the link instead of opening it.
+
+From the environment:
+
 ```sh
 read -rs OVH_APPLICATION_KEY && export OVH_APPLICATION_KEY
 read -rs OVH_APPLICATION_SECRET && export OVH_APPLICATION_SECRET
@@ -51,6 +66,15 @@ policy that grants only the resources and actions your tool needs. See OVHcloud'
 and [IAM policy guide](https://docs.ovhcloud.com/en/guides/account-and-service-management/account-information/iam-policies-api).
 
 ### Store it
+
+Recommended: the guided form opens OVHcloud's service account guide in your
+browser and asks for the client ID and secret. OAuth credentials are not checked.
+
+```sh
+lifevault import-provider ovh-oauth --connect --prefix PROD_
+```
+
+From the environment:
 
 ```sh
 read -rs OVH_CLIENT_ID && export OVH_CLIENT_ID
@@ -81,8 +105,10 @@ part of a project for `run --project` and push targets.
 
 ## Updating stored bundles
 
-- Imports make no OVHcloud API calls and never create, rotate or refresh keys.
-- After rotating at OVHcloud, export the new values and import with `--replace`.
+- Imports make no OVHcloud API calls, with or without `--connect`, and never
+  create, rotate or refresh keys.
+- After rotating at OVHcloud, import again with `--connect --replace` (or export
+  the new values and use `--replace`).
 - Omitting `OVH_ENDPOINT` on a re-import leaves any stored value unchanged. Use
   `lifevault remove <NAME>` to drop it.
 - Validation or a name collision leaves the vault unchanged.

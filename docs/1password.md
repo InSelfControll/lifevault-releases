@@ -6,7 +6,8 @@ concealed field per key.
 
 ## Prerequisites
 
-- The `op` CLI on `PATH`.
+- The `op` CLI on `PATH`. Unlike the other push targets, 1Password has no
+  built-in client; `op` is always required.
 - A 1Password account that can create service accounts.
 - A shared vault for the pushed items. Service accounts cannot reach Personal or
   Private vaults.
@@ -26,7 +27,40 @@ Store the token it prints at a hidden prompt:
 lifevault set OP_PUSH_TOKEN
 ```
 
-## Set up the target
+## Guided setup: `target connect onepassword`
+
+```sh
+lifevault target connect onepassword <TARGET> --vault <VAULT> --all-projects
+```
+
+What happens:
+
+1. **Token.** `OP_SERVICE_ACCOUNT_TOKEN` is used when set. Otherwise the
+   1Password.com service account page (**Developer > Service accounts**) opens in
+   your browser and you paste the token at a hidden prompt. `--no-browser` (or
+   `LIFEVAULT_NO_BROWSER`) prints the link instead.
+2. **Check.** `op vault list` verifies the token. Any failure stops here and
+   nothing is saved.
+3. **Destination.** `--vault` matches an ID or case-insensitive name. Without it,
+   a single vault is chosen automatically; otherwise a terminal menu asks.
+4. **Save.** The token is stored as `TARGET_<NAME>_OP_SERVICE_ACCOUNT_TOKEN`
+   together with the target, in one vault write. Existing secrets with that name
+   are overwritten only after confirmation or with `--yes`.
+5. **First push.** The key names to push are listed and the projects are pushed.
+   A terminal asks first unless `--yes`.
+
+| Option | Meaning |
+|---|---|
+| `--vault NAME_OR_ID` | Destination vault. |
+| `--project P` (repeatable) or `--all-projects` | Projects to push. |
+| `--yes` | Skip confirmations. |
+| `--no-browser` | Print the link instead of opening it. |
+
+Run the same command again to replace the stored token (for example after
+rotating it). The vault and projects are kept unless you pass options, and
+pending pushes are retried right away.
+
+## Scripted setup: `target add --type onepassword`
 
 ```sh
 lifevault target add <TARGET> --type onepassword --vault <VAULT> --all-projects \
@@ -85,5 +119,6 @@ lifevault target remove <TARGET>         # stop pushing; remote data is kept
 - **Push fails with an access error.** Check that the service account has
   `read_items,write_items` on the vault named by `--vault`, and that the vault is
   not a Personal/Private vault.
-- **Token rotated.** Store the new token with `lifevault set OP_PUSH_TOKEN`, then
+- **Token rotated.** Run `target connect onepassword <TARGET>` again, or store the
+  new token with `lifevault set <SECRET>` (the name you passed to `--auth`), then
   run `lifevault push`.

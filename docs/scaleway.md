@@ -21,6 +21,23 @@ Scaleway's
 
 ## Store it
 
+Recommended: the guided form opens Scaleway IAM API keys in your browser, asks
+for the access key and secret key (hidden) and the optional project, region and
+zone (visible, may be left empty), checks the key with one read-only request
+(`GET /iam/v1alpha1/api-keys/<ACCESS_KEY>`) and stores the bundle. A rejected key
+saves nothing.
+
+```sh
+lifevault import-provider scaleway --connect
+lifevault import-provider scaleway --connect --prefix PROD_   # optional prefix
+```
+
+Fields already set in your environment are used as-is. `--no-browser` (or
+`LIFEVAULT_NO_BROWSER`) prints the link instead of opening it; `--no-verify`
+skips the check.
+
+From the environment, without prompts or requests:
+
 ```sh
 read -rs SCW_ACCESS_KEY && export SCW_ACCESS_KEY
 read -rs SCW_SECRET_KEY && export SCW_SECRET_KEY
@@ -58,9 +75,10 @@ them under their original names.
 
 ## Updating
 
-- Imports make no Scaleway API calls and never create, rotate or refresh keys.
-- After rotating the key at Scaleway, export the new pair and import with
-  `--replace`.
+- Imports without `--connect` make no Scaleway API calls; `--connect` makes one
+  read-only check. No import creates, rotates or refreshes keys.
+- After rotating the key at Scaleway, import again with `--connect --replace`
+  (or export the new pair and use `--replace`).
 - Omitted optional variables leave previously stored values unchanged. Use
   `lifevault remove <NAME>` to drop one.
 - Validation or a name collision leaves the vault unchanged.

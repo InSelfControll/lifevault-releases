@@ -9,7 +9,8 @@ secrets in your shell history.
 - **Project-aware.** Import each project's `.env` file, then run the project with
   its secrets injected: `lifevault run --project my-api -- npm start`.
 - **Pushes to the managers you already use.** Lifevault can keep each project in
-  sync, one way, with Bitwarden/Vaultwarden, 1Password, HashiCorp Vault or Ansible Vault.
+  sync, one way, with Bitwarden/Vaultwarden, 1Password, HashiCorp Vault or Ansible Vault,
+  with guided, browser-assisted setup.
 - **Imports from them too.** You can import from Ansible Vault, HashiCorp Vault, environment
   variables, SSH key files and hosting-provider credential bundles, with optional
   automatic refresh.
@@ -28,6 +29,7 @@ private.
 - [Install](#install)
 - [Quick start](#quick-start)
 - [Command reference](#command-reference)
+  - [What's new in 0.4.0](#whats-new-in-040)
   - [Provider and vendor guides](#provider-and-vendor-guides)
   - [Vault and unlocking](#vault-and-unlocking)
   - [Storing and using secrets](#storing-and-using-secrets)
@@ -104,7 +106,27 @@ lifevault lock                         # forget the unlocked session now
 ## Command reference
 
 Run `lifevault --help` for the full built-in help, or `lifevault <group> --help`
-(for `update`, `broker`, `target` and `push`).
+(for `update`, `broker`, `target`, `target connect`, `import-provider` and `push`).
+
+### What's new in 0.4.0
+
+- **Nothing to install for most push targets.** Bitwarden/Vaultwarden, HashiCorp
+  Vault and Ansible Vault use built-in clients by default (`--client native`);
+  `--client cli` uses the official `bw`, `vault` or `ansible-vault` instead.
+  `import-hashicorp` and `import-ansible` take `--client` too. 1Password still
+  needs `op`.
+- **Browser-assisted setup.** `target connect bitwarden|onepassword|hashicorp`
+  opens the page where the credential is created (HashiCorp Vault: an OIDC login),
+  verifies it, saves it and pushes. Run it again to renew credentials and retry
+  pending pushes. `import-provider PROVIDER --connect` does the same for hosting
+  provider tokens.
+- **Private Bitwarden collections.** `--create-collection NAME` creates a
+  collection only you can access, and changing a target's collection moves its
+  item there instead of leaving a copy behind.
+- **Clearer feedback.** Errors explain a missing target `NAME`, an unknown option
+  or an organization name passed to `target add --organization` (which takes an
+  ID). Named projects without secrets are warned about, and the first push
+  reports `Pushed N projects (M keys) to TARGET.`
 
 ### Provider and vendor guides
 
@@ -195,7 +217,9 @@ automatically.
 
 | Command | What it does |
 |---|---|
-| `lifevault target connect bitwarden NAME [--server URL] [--organization NAME_OR_ID \| --folder NAME] [--collection NAME_OR_ID] (--project P... \| --all-projects) [--yes]` | Guided Bitwarden/Vaultwarden setup: checks your login, finds the organization and collection by name, saves the credentials in your vault and creates the target. |
+| `lifevault target connect bitwarden NAME [--server URL] [--organization NAME_OR_ID \| --folder NAME] [--collection NAME_OR_ID \| --create-collection NAME] [--client native\|cli] (--project P... \| --all-projects) [--yes] [--no-browser]` | Guided Bitwarden/Vaultwarden setup: opens the API key page, checks your login, finds the organization and collection by name (or creates a private collection), saves the credentials in your vault, creates the target and pushes. |
+| `lifevault target connect onepassword NAME [--vault NAME_OR_ID] (--project P... \| --all-projects) [--yes] [--no-browser]` | Guided 1Password setup: opens the service account page, checks the token with `op`, picks the vault, saves the token, creates the target and pushes. |
+| `lifevault target connect hashicorp NAME --address URL [--method oidc\|token] [--role ROLE] [--mount M] [--path-prefix P] [--namespace NS] [--ca-cert PATH] [--kv-version 1\|2] [--client native\|cli] (--project P... \| --all-projects) [--yes] [--no-browser]` | Guided HashiCorp Vault setup: signs in through your browser with OIDC (or takes a token), shows the token's policies and expiry, saves it, creates the target and pushes. |
 | `lifevault target add NAME --type TYPE (--project P... \| --all-projects) [OPTIONS] --auth VAR=SECRET...` | Add a target and push to it immediately (scriptable form for every type). |
 | `lifevault target list` | Show targets, their projects, the last push time, and any pending pushes or errors. |
 | `lifevault target remove NAME` | Stop pushing to a target. Remote data is kept. |
@@ -203,33 +227,47 @@ automatically.
 
 | Type | Options | Required `--auth` variables | Remote layout |
 |---|---|---|---|
-| `bitwarden` (Bitwarden and Vaultwarden) | `[--server URL]` and either `--folder NAME` or `--organization ID --collection ID` | `BW_CLIENTID`, `BW_CLIENTSECRET`, `BW_PASSWORD` | A secure note `lifevault/PROJECT` with a hidden field per key |
+| `bitwarden` (Bitwarden and Vaultwarden) | `[--server URL]` and either `--folder NAME` or `--organization ID --collection ID`; `[--client native\|cli]` | `BW_CLIENTID`, `BW_CLIENTSECRET`, `BW_PASSWORD` | A secure note `lifevault/PROJECT` with a hidden field per key |
 | `onepassword` | `--vault NAME` | `OP_SERVICE_ACCOUNT_TOKEN` | An item `lifevault/PROJECT` with a concealed field per key |
-| `hashicorp` | `--address URL [--mount NAME] [--path-prefix P] [--namespace NS] [--ca-cert PATH] [--kv-version 1\|2]` | `VAULT_TOKEN` | A KV secret at `MOUNT/PREFIX/project` (defaults: `secret`, `lifevault`, KV v2) |
-| `ansible` | `--dir PATH` | `ANSIBLE_VAULT_PASSWORD` | An encrypted `DIR/project.yml` file |
+| `hashicorp` | `--address URL [--mount NAME] [--path-prefix P] [--namespace NS] [--ca-cert PATH] [--kv-version 1\|2] [--client native\|cli]` | `VAULT_TOKEN` | A KV secret at `MOUNT/PREFIX/project` (defaults: `secret`, `lifevault`, KV v2) |
+| `ansible` | `--dir PATH [--client native\|cli]` | `ANSIBLE_VAULT_PASSWORD` | An encrypted `DIR/project.yml` file |
 
 The login credentials for each manager are stored **as Lifevault secrets** and
-referenced by name. They're handed only to that manager's CLI and are never
-pushed anywhere. For Bitwarden/Vaultwarden, `target connect` does all of this for
-you (it uses `BW_CLIENTID`, `BW_CLIENTSECRET`, `BW_PASSWORD` and `BW_SERVER` from
-your environment when set, and asks at hidden prompts otherwise):
+referenced by name. They're used only to reach that manager and are never pushed
+anywhere. `target connect` does all of this for you: it uses the credentials from
+your environment when set; otherwise it opens the page where they're created and
+asks at hidden prompts. It verifies them before saving anything. Run it again for
+an existing target to renew its credentials (for example an expired Vault token);
+pending pushes are retried.
 
 ```sh
 lifevault target connect bitwarden home --server https://vault.example.com \
-    --organization <ORG_NAME> --all-projects
+    --organization <ORG_NAME> --create-collection <COLLECTION> --all-projects
+lifevault target connect onepassword work --vault <VAULT> --project my-api
+lifevault target connect hashicorp hc --address https://vault.example.com:8200 \
+    --role <ROLE> --all-projects
 
-lifevault set OP_TOKEN
-lifevault target add work --type onepassword --vault Dev --project my-api \
-    --auth OP_SERVICE_ACCOUNT_TOKEN=OP_TOKEN
+lifevault set ANSIBLE_PUSH_PASSWORD
+lifevault target add ans --type ansible --project my-api --dir ~/infra/group_vars/all \
+    --auth ANSIBLE_VAULT_PASSWORD=ANSIBLE_PUSH_PASSWORD
 
 lifevault push --dry-run
 ```
 
-- **Requirements.** The matching official CLI must be installed: `bw`, `op`, `vault`
-  or `ansible-vault`.
-- **No secrets on command lines.** Values go to the CLI over stdin and credentials
-  through its environment, so neither appears in process listings. Each CLI starts
-  with a minimal environment. Bitwarden gets its own isolated config folder.
+- **Requirements.** Bitwarden/Vaultwarden, HashiCorp Vault and Ansible Vault need
+  nothing installed: the built-in client (`--client native`, the default) talks
+  to the server's API or encrypts in-process. `--client cli` uses the official
+  `bw`, `vault` or `ansible-vault` instead, which must then be installed.
+  1Password always needs the official `op` CLI.
+- **No secrets on command lines.** Built-in clients send credentials only in
+  request headers or bodies over HTTPS (plain HTTP only to `localhost`). CLIs get
+  values over stdin and credentials through their environment, so neither appears
+  in process listings. Each CLI starts with a minimal environment, and `bw` gets
+  its own isolated config folder.
+- **Who can see Bitwarden items.** An organization item is visible to everyone
+  with access to its collection. Keep secrets out of collections every member
+  can open; `--create-collection NAME` creates one only you can access. See the
+  [Bitwarden guide](docs/bitwarden.md#who-can-see-the-secrets).
 - **Only its own items.** Lifevault only changes items it created and marked. It
   won't take over an existing item that has the same name.
 - **Edits in the managers are overwritten** on the next push.
@@ -240,16 +278,16 @@ lifevault push --dry-run
   account limited to one vault, or a Vault token whose policy only covers the
   `lifevault/` path.
 
-Setup guides: [Bitwarden/Vaultwarden](docs/bitwarden.md) (including the guided
-`target connect bitwarden`), [1Password](docs/1password.md),
+Setup guides: [Bitwarden/Vaultwarden](docs/bitwarden.md), [1Password](docs/1password.md),
 [HashiCorp Vault](docs/hashicorp-vault.md) and [Ansible Vault](docs/ansible-vault.md).
 
 ### Importing from other sources
 
 | Command | What it does |
 |---|---|
-| `lifevault import-ansible FILE FIELDS... [OPTIONS]` | Import string fields from an Ansible Vault YAML file. Needs `--vault-password-file PATH` or `--vault-id ID@SOURCE`. |
-| `lifevault import-hashicorp PATH FIELDS... [OPTIONS]` | Import string fields from HashiCorp Vault KV, using an authenticated `vault` CLI. `--kv-version 1\|2`. |
+| `lifevault import-ansible FILE FIELDS... [OPTIONS]` | Import string fields from an Ansible Vault YAML file. Needs `--vault-password-file PATH` or `--vault-id ID@SOURCE`. Decrypts in-process; `--client cli` uses `ansible-vault view`. |
+| `lifevault import-hashicorp PATH FIELDS... [OPTIONS]` | Import string fields from HashiCorp Vault KV over its HTTP API, using `VAULT_ADDR` and `VAULT_TOKEN` (else `~/.vault-token`). `--kv-version 1\|2`. `--client cli` uses `vault kv get`. |
+| `lifevault import-provider PROVIDER --connect [--prefix PREFIX] [--replace] [--no-browser] [--no-verify]` | Guided: open the provider's token page, ask for missing fields at the terminal, check the token with one read-only request (Hetzner Cloud, DigitalOcean, Linode, Vultr, Scaleway) and store the bundle. |
 | `lifevault import-provider PROVIDER [--prefix PREFIX] [--replace]` | Import a hosting-provider credential bundle from the environment. |
 | `lifevault import-provider --list` | List bundles and the variables each one needs. |
 
@@ -257,6 +295,7 @@ Options for the Ansible and HashiCorp imports:
 - `FIELDS...` selects fields; `SOURCE=NAME` renames one as it's stored.
 - `--all` imports every field instead of selecting some.
 - `--replace` allows overwriting existing names.
+- `--client native|cli` picks the built-in client (default) or the official CLI.
 - `--auto-refresh SECONDS` tracks the source (see [Automatic refresh](#automatic-refresh)).
 
 Provider bundles cover Hetzner Cloud, Hetzner Storage Box, OVHcloud (API keys or

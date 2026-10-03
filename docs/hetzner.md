@@ -31,6 +31,21 @@ issue Cloud project tokens.
 
 ### Store it
 
+Recommended: the guided form opens Hetzner Console projects in your browser
+(choose the project, then **Security > API Tokens > Generate API token**), asks
+for the token at a hidden prompt, checks it with one read-only request
+(`GET /v1/locations`) and stores it. A rejected token saves nothing.
+
+```sh
+lifevault import-provider hetzner-cloud --connect
+```
+
+`HCLOUD_TOKEN` is used as-is when already set in your environment. `--no-browser`
+(or `LIFEVAULT_NO_BROWSER`) prints the link instead of opening it; `--no-verify`
+skips the check.
+
+From the environment, without prompts or requests:
+
 ```sh
 read -rs HCLOUD_TOKEN && export HCLOUD_TOKEN
 lifevault import-provider hetzner-cloud
@@ -79,6 +94,16 @@ Local imports accept writable credentials as well as read-only ones.
 
 ### Store it
 
+Recommended: the guided form opens Hetzner Console in your browser and asks for
+the host and username (visible) and the password (hidden). Storage Box
+credentials are not checked.
+
+```sh
+lifevault import-provider hetzner-storagebox --connect --prefix BACKUP_
+```
+
+From the environment:
+
 ```sh
 read -rs HETZNER_STORAGEBOX_HOST && export HETZNER_STORAGEBOX_HOST
 read -rs HETZNER_STORAGEBOX_USERNAME && export HETZNER_STORAGEBOX_USERNAME
@@ -104,10 +129,11 @@ lifevault run BACKUP_HETZNER_STORAGEBOX_HOST=<CLIENT_HOST_VAR> \
 
 ## Updating stored bundles
 
-- Imports make no Hetzner API calls. They do not create, rotate or refresh
+- Imports without `--connect` make no Hetzner API calls; `--connect` makes one
+  read-only check for `hetzner-cloud`. No import creates, rotates or refreshes
   credentials, and `--auto-refresh` does not apply.
-- After you rotate a token or password in Hetzner Console, export the new value
-  and import again with `--replace`.
+- After you rotate a token or password in Hetzner Console, import again with
+  `--connect --replace` (or export the new value and use `--replace`).
 - All required variables must be present, nonempty UTF-8. The bundle is saved in
   one write: a missing variable or a name collision leaves the vault unchanged.
 - Without `--replace`, existing names cause an error.
