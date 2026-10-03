@@ -157,6 +157,29 @@ so you can delete it in the web vault. `--layout per-key` switches the same way.
 Vaults with per-key or section targets can't be opened by releases older than
 0.5.0; update every machine that uses the vault first.
 
+### Folders (0.5.2)
+
+Bitwarden folders are personal: every user files items, organization items
+included, in their own folders. Apps list folders separately from collections.
+
+| Goal | Command |
+|---|---|
+| Organization notes, also shown under *Folders > dnsfabric* for you | `lifevault target connect bitwarden <TARGET> --organization <ORG> --layout section --parent <COLLECTION> --folder dnsfabric --project <PROJECT> --yes` |
+| New target, personal vault only | `lifevault target connect bitwarden <TARGET> --layout section --folder dnsfabric --project <PROJECT>` |
+| Move an organization target to the personal vault | `lifevault target connect bitwarden <TARGET> --personal --folder dnsfabric --yes` |
+| Move it back to the organization | `lifevault target connect bitwarden <TARGET> --organization <ORG> --layout section --parent <COLLECTION> --folder dnsfabric --yes` |
+
+- The folder is created when missing and matched ignoring case. Filing an
+  unchanged note only updates your folder assignment; its content is not rewritten.
+- Moving between the organization and the personal vault writes the new notes
+  first, then moves the old ones to the trash.
+- Reconnecting an organization target with `--folder` alone keeps it in the
+  organization; leaving needs `--personal`.
+- `--folder` without an organization and without `--layout section` keeps the
+  older per-project layout (one `lifevault/PROJECT` item in the folder).
+- References resolve through folders as well as collections:
+  `lifevault://dnsfabric/DNS_FABRIC_LICENSE/DATABASE_URL`.
+
 ## Who can see the secrets
 
 In an organization, an item is visible to everyone with access to its

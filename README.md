@@ -122,6 +122,11 @@ and `push`).
   from Bitwarden/Vaultwarden at run time, so the file can be committed. Resolved
   values are cached encrypted, with an offline fallback. See
   [Loading .env files from your vault](#loading-env-files-from-your-vault).
+- **Folders (0.5.2).** `--folder NAME` with `--organization` also files the
+  section notes in your personal Bitwarden folder, so apps list them under
+  *Folders*; `--layout section --folder NAME` without an organization (or
+  `--personal --folder NAME` on an existing target) keeps them in your personal
+  vault only. See [Bitwarden layouts](#bitwarden-layouts).
 - **Read-only remotes.** `lifevault remote connect bitwarden NAME` lets a teammate
   who only reads the collections run the project with nothing but the `.env` file.
 - **Vault format.** Vaults with per-key or section targets, remotes or cached
@@ -308,6 +313,27 @@ lifevault target connect bitwarden vw --server https://vault.example.com \
 #               DATABASE_URL                (secure note; hidden field "value")
 #               LICENSE_KEY                 (secure note; hidden field "value")
 ```
+
+**Folders.** Bitwarden folders are personal: each user files items, including
+organization items, in their own folders. Add `--folder NAME` to an organization
+section target to also file its notes in your folder NAME (created if missing,
+matched ignoring case); the collection still decides who else can open them.
+For notes only you can see, use the personal vault:
+
+```sh
+# organization notes, also filed in your folder "dnsfabric"
+lifevault target connect bitwarden vw --organization <ORG_NAME> --layout section \
+    --parent DnsFabric --folder dnsfabric --project dns-fabric-license
+# personal vault only: a new target, or move an existing one out of the organization
+lifevault target connect bitwarden vw --layout section --folder dnsfabric --project dns-fabric-license
+lifevault target connect bitwarden vw --personal --folder dnsfabric --yes
+```
+
+Moving between the organization and the personal vault writes the new notes
+first, then moves the old ones to the trash. Reconnecting an organization target
+with `--folder` alone keeps it in the organization. References resolve through
+folders too: `lifevault://dnsfabric/DNS_FABRIC_LICENSE/DATABASE_URL` matches a
+collection or a folder named `dnsfabric`.
 
 Targets saved by earlier releases keep their layout. Switch one with
 `target connect bitwarden NAME --organization ORG --layout section --parent NAME
