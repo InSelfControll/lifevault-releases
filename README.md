@@ -53,7 +53,8 @@ Download the archive for your platform from the
 | Linux x86_64          | `lifevault-x86_64-unknown-linux-musl.tar.gz`  |
 | Linux ARM64           | `lifevault-aarch64-unknown-linux-musl.tar.gz` |
 | macOS Apple silicon   | `lifevault-aarch64-apple-darwin.tar.gz`       |
-| macOS Intel           | `lifevault-x86_64-apple-darwin.tar.gz`        |
+
+Intel Macs are no longer supported; 0.3.0 was the last release with an Intel macOS build.
 
 The Linux builds are static, so there are no runtime dependencies.
 
@@ -285,6 +286,7 @@ value is used.
   failed.
 - **Package managers.** Installs managed by a package manager (including
   `/nix/store`) must be updated through that package manager.
+- **Platforms.** Linux x86_64, Linux ARM64 and macOS Apple silicon.
 - **Upgrading from 0.2.3 or earlier.** Those versions check a private repository,
   so update them once by reinstalling from this page. After that, updates need no
   token.
