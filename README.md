@@ -28,6 +28,7 @@ private.
 - [Install](#install)
 - [Quick start](#quick-start)
 - [Command reference](#command-reference)
+  - [Provider and vendor guides](#provider-and-vendor-guides)
   - [Vault and unlocking](#vault-and-unlocking)
   - [Storing and using secrets](#storing-and-using-secrets)
   - [Importing .env files by project](#importing-env-files-by-project)
@@ -104,6 +105,13 @@ lifevault lock                         # forget the unlocked session now
 
 Run `lifevault --help` for the full built-in help, or `lifevault <group> --help`
 (for `update`, `broker`, `target` and `push`).
+
+### Provider and vendor guides
+
+Step-by-step guides for each provider and tool (Hetzner, OVHcloud, DigitalOcean,
+Linode, Vultr, Scaleway, Bitwarden/Vaultwarden, 1Password, HashiCorp Vault,
+Ansible Vault, AWS, Azure, Google Cloud, PostgreSQL, MySQL, GitHub, GitLab,
+Cloudflare, `.env` files and SSH keys) are in [docs/README.md](docs/README.md).
 
 ### Vault and unlocking
 
@@ -187,7 +195,8 @@ automatically.
 
 | Command | What it does |
 |---|---|
-| `lifevault target add NAME --type TYPE (--project P... \| --all-projects) [OPTIONS] --auth VAR=SECRET...` | Add a target and push to it immediately. |
+| `lifevault target connect bitwarden NAME [--server URL] [--organization NAME_OR_ID \| --folder NAME] [--collection NAME_OR_ID] (--project P... \| --all-projects) [--yes]` | Guided Bitwarden/Vaultwarden setup: checks your login, finds the organization and collection by name, saves the credentials in your vault and creates the target. |
+| `lifevault target add NAME --type TYPE (--project P... \| --all-projects) [OPTIONS] --auth VAR=SECRET...` | Add a target and push to it immediately (scriptable form for every type). |
 | `lifevault target list` | Show targets, their projects, the last push time, and any pending pushes or errors. |
 | `lifevault target remove NAME` | Stop pushing to a target. Remote data is kept. |
 | `lifevault push [--target NAME] [--project P] [--dry-run] [--force] [--prune]` | Push now. `--dry-run` lists the key names that would change. `--force` pushes even when nothing changed. `--prune` deletes remote items for projects with no secrets left. |
@@ -201,13 +210,13 @@ automatically.
 
 The login credentials for each manager are stored **as Lifevault secrets** and
 referenced by name. They're handed only to that manager's CLI and are never
-pushed anywhere:
+pushed anywhere. For Bitwarden/Vaultwarden, `target connect` does all of this for
+you (it uses `BW_CLIENTID`, `BW_CLIENTSECRET`, `BW_PASSWORD` and `BW_SERVER` from
+your environment when set, and asks at hidden prompts otherwise):
 
 ```sh
-lifevault set BW_ID; lifevault set BW_SECRET; lifevault set BW_PW
-lifevault target add home --type bitwarden --server https://vault.example.com \
-    --folder Projects --all-projects \
-    --auth BW_CLIENTID=BW_ID --auth BW_CLIENTSECRET=BW_SECRET --auth BW_PASSWORD=BW_PW
+lifevault target connect bitwarden home --server https://vault.example.com \
+    --organization <ORG_NAME> --all-projects
 
 lifevault set OP_TOKEN
 lifevault target add work --type onepassword --vault Dev --project my-api \
@@ -231,6 +240,10 @@ lifevault push --dry-run
   account limited to one vault, or a Vault token whose policy only covers the
   `lifevault/` path.
 
+Setup guides: [Bitwarden/Vaultwarden](docs/bitwarden.md) (including the guided
+`target connect bitwarden`), [1Password](docs/1password.md),
+[HashiCorp Vault](docs/hashicorp-vault.md) and [Ansible Vault](docs/ansible-vault.md).
+
 ### Importing from other sources
 
 | Command | What it does |
@@ -247,7 +260,8 @@ Options for the Ansible and HashiCorp imports:
 - `--auto-refresh SECONDS` tracks the source (see [Automatic refresh](#automatic-refresh)).
 
 Provider bundles cover Hetzner Cloud, Hetzner Storage Box, OVHcloud (API keys or
-OAuth), DigitalOcean, Linode, Vultr and Scaleway.
+OAuth), DigitalOcean, Linode, Vultr and Scaleway. See the
+[provider guides](docs/README.md) for each bundle's variables and setup.
 
 ### SSH keys
 
@@ -307,7 +321,9 @@ PostgreSQL, MySQL, GitHub, GitLab, Cloudflare, Hetzner Storage Box and OVHcloud.
 | `lifevault broker providers` | List the provider adapters. |
 | `lifevault broker admin-token`, `configure`, `provider-auth`, `agent-token` | Recovery and configuration commands; see `broker --help`. |
 
-The full broker guide is in `docs/broker.md` inside each release archive.
+The full broker guide is in `docs/broker.md` inside each release archive. To get
+started, see [broker basics](docs/broker-basics.md) and the per-provider guides
+listed in [docs/README.md](docs/README.md).
 
 ### Global options
 
